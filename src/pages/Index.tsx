@@ -1,14 +1,26 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/context/AuthContext";
 
 const Index = () => {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold mb-4">Welcome to Your Blank App</h1>
-        <p className="text-xl text-gray-600">Start building your amazing project here!</p>
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50">
+        <div className="text-center animate-pulse-subtle">
+          <h2 className="text-xl font-bold mb-2">Carregando FinSync...</h2>
+          <p className="text-zinc-500">Por favor, aguarde um momento</p>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  if (user) {
+    return <Navigate to="/" replace />;
+  } else {
+    return <Navigate to="/login" replace />;
+  }
 };
 
 export default Index;
