@@ -1,9 +1,8 @@
-
 import { useState, useMemo } from "react";
 import { useTransactions } from "@/context/TransactionContext";
 import { 
   AlertTriangle, 
-  CashIcon, 
+  CircleDollarSign, 
   ChevronLeft, 
   ChevronRight, 
   LineChart, 
