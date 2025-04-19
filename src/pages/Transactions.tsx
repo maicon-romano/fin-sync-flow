@@ -339,7 +339,7 @@ export default function Transactions() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction variant="destructive" onClick={confirmDelete}>
+              <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDelete}>
                 Excluir
               </AlertDialogAction>
             </AlertDialogFooter>
