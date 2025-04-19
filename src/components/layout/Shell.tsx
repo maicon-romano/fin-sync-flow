@@ -1,5 +1,5 @@
 
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,13 @@ import {
   TrendingUp,
   CreditCard,
   CircleDollarSign,
-  Bell
+  Bell,
+  ChevronRight,
+  ChevronLeft
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useLocation, Link } from "react-router-dom";
+import { useSidebar } from "@/hooks/use-sidebar";
 
 type SidebarLink = {
   name: string;
@@ -28,15 +32,16 @@ type SidebarLink = {
 
 export default function Shell({ children }: { children: ReactNode }) {
   const { user, logout, isPremium } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const location = useLocation();
   const isMobile = useIsMobile();
+  const { isOpen, toggleSidebar } = useSidebar();
 
   const mainLinks: SidebarLink[] = [
     { name: "Dashboard", href: "/", icon: <Home className="h-5 w-5" /> },
     { name: "Transações", href: "/transactions", icon: <CreditCard className="h-5 w-5" /> },
     { name: "Orçamentos", href: "/budgets", icon: <PiggyBank className="h-5 w-5" /> },
     { name: "Relatórios", href: "/reports", icon: <BarChart className="h-5 w-5" /> },
-    { name: "Metas", href: "/goals", icon: <TrendingUp className="h-5 w-5" />, isPremium: true },
+    { name: "Previsão", href: "/forecast", icon: <TrendingUp className="h-5 w-5" /> },
     { name: "Investimentos", href: "/investments", icon: <CircleDollarSign className="h-5 w-5" />, isPremium: true },
   ];
 
@@ -51,52 +56,61 @@ export default function Shell({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
-  const closeSidebar = () => setSidebarOpen(false);
-
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Mobile sidebar overlay */}
-      {isMobile && sidebarOpen && (
+      {isMobile && isOpen && (
         <div 
           className="fixed inset-0 bg-black/50 z-40" 
-          onClick={closeSidebar}
+          onClick={toggleSidebar}
         />
       )}
       
       {/* Sidebar */}
       <aside 
         className={cn(
-          "bg-finsync-dark text-white w-64 flex-shrink-0 flex flex-col border-r border-zinc-800 z-50",
-          isMobile && "fixed inset-y-0 left-0 transition-transform transform duration-300 ease-in-out h-full",
-          isMobile && !sidebarOpen && "-translate-x-full"
+          "bg-finsync-dark text-white flex-shrink-0 flex flex-col border-r border-zinc-800 z-50 transition-all duration-300",
+          isMobile ? "fixed inset-y-0 left-0 h-full" : "relative",
+          isOpen ? "w-64" : isMobile ? "-translate-x-full" : "w-[70px]"
         )}
       >
-        <div className="p-4 border-b border-zinc-800">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold text-white">
-              <span className="text-finsync-accent">Fin</span>Sync
-            </h2>
-            {isMobile && (
-              <button onClick={closeSidebar} className="p-2 -mr-2 rounded-full hover:bg-zinc-800">
-                <X className="h-5 w-5 text-zinc-400" />
-              </button>
-            )}
-          </div>
+        <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+          <h2 className={cn(
+            "text-xl font-bold text-white transition-opacity duration-200",
+            !isOpen && !isMobile && "opacity-0"
+          )}>
+            <span className="text-finsync-accent">Fin</span>Sync
+          </h2>
+          {isMobile ? (
+            <button onClick={toggleSidebar} className="p-2 -mr-2 rounded-full hover:bg-zinc-800">
+              <X className="h-5 w-5 text-zinc-400" />
+            </button>
+          ) : (
+            <button 
+              onClick={toggleSidebar} 
+              className={cn(
+                "p-1 rounded-full hover:bg-zinc-800 text-zinc-400",
+                !isOpen && "absolute right-0 translate-x-full bg-finsync-dark rounded-l-none rounded-r-full border-y border-r border-zinc-800"
+              )}
+            >
+              {isOpen ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </button>
+          )}
         </div>
         
         <nav className="flex-1 overflow-y-auto py-4 px-3">
           <div className="space-y-1">
             {mainLinks.map((link) => {
+              const isActive = location.pathname === link.href;
               const isDisabled = link.isPremium && !isPremium();
               
               return (
-                <a
+                <Link
                   key={link.name}
-                  href={isDisabled ? "#" : link.href}
+                  to={isDisabled ? "#" : link.href}
                   className={cn(
                     "flex items-center px-3 py-2 rounded-md text-sm font-medium group transition-colors",
-                    link.href === window.location.pathname 
+                    isActive 
                       ? "bg-zinc-800 text-white" 
                       : "text-zinc-400 hover:bg-zinc-800 hover:text-white",
                     isDisabled && "opacity-50 cursor-not-allowed"
@@ -106,55 +120,77 @@ export default function Shell({ children }: { children: ReactNode }) {
                       e.preventDefault();
                       alert("Recurso disponível apenas no plano Premium");
                     } else if (isMobile) {
-                      closeSidebar();
+                      toggleSidebar();
                     }
                   }}
                 >
-                  {link.icon}
-                  <span className="ml-3">{link.name}</span>
+                  <div className="flex-shrink-0">{link.icon}</div>
+                  <span className={cn(
+                    "ml-3 transition-all duration-200",
+                    !isOpen && !isMobile && "opacity-0 w-0 overflow-hidden"
+                  )}>
+                    {link.name}
+                  </span>
                   {isDisabled && (
-                    <span className="ml-auto text-xs px-2 py-0.5 rounded bg-zinc-700 text-zinc-300">
+                    <span className={cn(
+                      "ml-auto text-xs px-2 py-0.5 rounded bg-zinc-700 text-zinc-300 transition-all duration-200",
+                      !isOpen && !isMobile && "opacity-0 w-0 overflow-hidden"
+                    )}>
                       PRO
                     </span>
                   )}
-                </a>
+                </Link>
               );
             })}
           </div>
           
           <div className="mt-8 pt-4 border-t border-zinc-800">
-            <div className="px-3 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+            <div className={cn(
+              "px-3 mb-2 text-xs font-semibold text-zinc-500 uppercase tracking-wider transition-all duration-200",
+              !isOpen && !isMobile && "opacity-0"
+            )}>
               Conta
             </div>
             <div className="space-y-1">
               {bottomLinks.map((link) => (
-                <a
+                <Link
                   key={link.name}
-                  href={link.href}
+                  to={link.href}
                   className={cn(
                     "flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors",
-                    link.href === window.location.pathname 
+                    location.pathname === link.href 
                       ? "bg-zinc-800 text-white" 
                       : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
                   )}
-                  onClick={() => isMobile && closeSidebar()}
+                  onClick={() => isMobile && toggleSidebar()}
                 >
-                  {link.icon}
-                  <span className="ml-3">{link.name}</span>
-                </a>
+                  <div className="flex-shrink-0">{link.icon}</div>
+                  <span className={cn(
+                    "ml-3 transition-all duration-200",
+                    !isOpen && !isMobile && "opacity-0 w-0 overflow-hidden"
+                  )}>
+                    {link.name}
+                  </span>
+                </Link>
               ))}
             </div>
           </div>
         </nav>
         
         <div className="p-3 border-t border-zinc-800">
-          <div className="flex items-center px-2 py-2">
+          <div className={cn(
+            "flex items-center px-2 py-2",
+            !isOpen && !isMobile && "justify-center"
+          )}>
             <div className="flex-shrink-0">
               <div className="w-8 h-8 rounded-full bg-finsync-primary text-white flex items-center justify-center">
                 {user.name.charAt(0).toUpperCase()}
               </div>
             </div>
-            <div className="ml-3 min-w-0 flex-1">
+            <div className={cn(
+              "ml-3 min-w-0 flex-1 transition-all duration-200",
+              !isOpen && !isMobile && "opacity-0 w-0 overflow-hidden"
+            )}>
               <p className="text-sm font-medium text-white truncate">{user.name}</p>
               <p className="text-xs text-zinc-400 truncate">{user.email}</p>
             </div>

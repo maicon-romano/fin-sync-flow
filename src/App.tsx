@@ -9,6 +9,10 @@ import { TransactionProvider } from "./context/TransactionContext";
 
 import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
+import Transactions from "./pages/Transactions";
+import Reports from "./pages/Reports";
+import Budgets from "./pages/Budgets";
+import Forecast from "./pages/Forecast";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -77,6 +81,38 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/transactions" 
+                element={
+                  <ProtectedRoute>
+                    <Transactions />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/budgets" 
+                element={
+                  <ProtectedRoute>
+                    <Budgets />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/reports" 
+                element={
+                  <ProtectedRoute>
+                    <Reports />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/forecast" 
+                element={
+                  <ProtectedRoute>
+                    <Forecast />
                   </ProtectedRoute>
                 } 
               />
