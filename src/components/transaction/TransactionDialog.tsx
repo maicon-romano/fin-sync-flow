@@ -226,7 +226,7 @@ export function TransactionDialog({
                             <SelectValue placeholder="Selecione uma categoria" />
                           </SelectTrigger>
                         </FormControl>
-                        <SelectContent>
+                        <SelectContent className="z-[60]">
                           {filteredCategories.map(category => (
                             <SelectItem key={category.value} value={category.value}>
                               {category.label}
@@ -265,12 +265,13 @@ export function TransactionDialog({
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                        <PopoverContent className="w-auto p-0 z-[100]" align="start">
                           <Calendar
                             mode="single"
                             selected={field.value}
                             onSelect={field.onChange}
                             initialFocus
+                            className="p-3 pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>
@@ -306,12 +307,13 @@ export function TransactionDialog({
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0" align="start">
+                          <PopoverContent className="w-auto p-0 z-[100]" align="start">
                             <Calendar
                               mode="single"
                               selected={field.value}
                               onSelect={field.onChange}
                               initialFocus
+                              className="p-3 pointer-events-auto"
                             />
                           </PopoverContent>
                         </Popover>
@@ -348,15 +350,16 @@ export function TransactionDialog({
                     control={form.control}
                     name="isPaid"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 bg-muted/30 p-3 rounded-md">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            className="mt-1"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>Pago/Recebido</FormLabel>
+                          <FormLabel className="text-base">Pago/Recebido</FormLabel>
                           <FormDescription>
                             {watchedType === "income" 
                               ? "Esta receita já foi recebida?" 
@@ -372,15 +375,16 @@ export function TransactionDialog({
                     control={form.control}
                     name="isRecurring"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 bg-muted/30 p-3 rounded-md">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
                             onCheckedChange={field.onChange}
+                            className="mt-1"
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <FormLabel>Recorrente</FormLabel>
+                          <FormLabel className="text-base">Recorrente</FormLabel>
                           <FormDescription>
                             Esta transação se repete mensalmente?
                           </FormDescription>
@@ -395,15 +399,16 @@ export function TransactionDialog({
                       control={form.control}
                       name="isVariable"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 bg-muted/30 p-3 rounded-md">
                           <FormControl>
                             <Checkbox
                               checked={field.value}
                               onCheckedChange={field.onChange}
+                              className="mt-1"
                             />
                           </FormControl>
                           <div className="space-y-1 leading-none">
-                            <FormLabel>Valor Variável</FormLabel>
+                            <FormLabel className="text-base">Valor Variável</FormLabel>
                             <FormDescription>
                               O valor desta despesa varia mensalmente?
                             </FormDescription>

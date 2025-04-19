@@ -153,7 +153,7 @@ export default function Transactions() {
                       Filtros
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
+                  <DropdownMenuContent align="end" className="w-56 z-50">
                     <DropdownMenuLabel>Tipo</DropdownMenuLabel>
                     <DropdownMenuGroup>
                       <DropdownMenuItem onClick={() => setTypeFilter("all")}>
@@ -339,7 +339,7 @@ export default function Transactions() {
             </AlertDialogHeader>
             <AlertDialogFooter>
               <AlertDialogCancel>Cancelar</AlertDialogCancel>
-              <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={confirmDelete}>
+              <AlertDialogAction variant="destructive" onClick={confirmDelete}>
                 Excluir
               </AlertDialogAction>
             </AlertDialogFooter>
