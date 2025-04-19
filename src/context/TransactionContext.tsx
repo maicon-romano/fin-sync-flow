@@ -31,6 +31,7 @@ export type Transaction = {
   dueDate?: string;
   isPaid: boolean;
   isRecurring: boolean;
+  isVariable?: boolean;
   source?: string;
   notes?: string;
 };
@@ -51,6 +52,7 @@ type TransactionContextType = {
     source?: string;
   }) => Transaction[];
   getCategoryName: (category: TransactionCategory) => string;
+  categoryLabels: Record<TransactionCategory, string>;
 };
 
 const TransactionContext = createContext<TransactionContextType | undefined>(undefined);
@@ -222,12 +224,14 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
     startDate?: string;
     endDate?: string;
     source?: string;
+    isVariable?: boolean;
   }) => {
     return transactions.filter(transaction => {
       // Apply each filter if it exists
       if (filters.type && transaction.type !== filters.type) return false;
       if (filters.category && transaction.category !== filters.category) return false;
       if (filters.isPaid !== undefined && transaction.isPaid !== filters.isPaid) return false;
+      if (filters.isVariable !== undefined && transaction.isVariable !== filters.isVariable) return false;
       if (filters.startDate && transaction.date < filters.startDate) return false;
       if (filters.endDate && transaction.date > filters.endDate) return false;
       if (filters.source && transaction.source !== filters.source) return false;
@@ -250,7 +254,8 @@ export const TransactionProvider = ({ children }: { children: ReactNode }) => {
         deleteTransaction, 
         markAsPaid, 
         filterTransactions,
-        getCategoryName
+        getCategoryName,
+        categoryLabels
       }}
     >
       {children}

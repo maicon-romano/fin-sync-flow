@@ -10,7 +10,8 @@ import {
   Filter, 
   Plus, 
   Search,
-  Trash2
+  Trash2,
+  Pen
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,13 +42,30 @@ import {
 import { Badge } from "@/components/ui/badge";
 import Shell from "@/components/layout/Shell";
 import { cn } from "@/lib/utils";
-import { TransactionType, TransactionCategory } from "@/context/TransactionContext";
+import { Transaction, TransactionType, TransactionCategory } from "@/context/TransactionContext";
+import { TransactionDialog } from "@/components/transaction/TransactionDialog";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export default function Transactions() {
   const { transactions, markAsPaid, deleteTransaction, getCategoryName } = useTransactions();
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState<TransactionType | "all">("all");
   const [isPaidFilter, setIsPaidFilter] = useState<boolean | "all">("all");
+  
+  // Dialog states
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | undefined>(undefined);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [transactionToDelete, setTransactionToDelete] = useState<string | undefined>(undefined);
   
   // Format currency
   const formatCurrency = (value: number) => {
@@ -73,6 +91,30 @@ export default function Transactions() {
     
     return matchesSearch && matchesType && matchesPaid;
   });
+
+  // Handlers
+  const handleCreateTransaction = () => {
+    setSelectedTransaction(undefined);
+    setIsDialogOpen(true);
+  };
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setSelectedTransaction(transaction);
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteTransaction = (id: string) => {
+    setTransactionToDelete(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = () => {
+    if (transactionToDelete) {
+      deleteTransaction(transactionToDelete);
+      setTransactionToDelete(undefined);
+      setDeleteDialogOpen(false);
+    }
+  };
   
   return (
     <Shell>
@@ -84,7 +126,7 @@ export default function Transactions() {
               Gerencie todas as suas receitas e despesas
             </p>
           </div>
-          <Button className="shrink-0">
+          <Button className="shrink-0" onClick={handleCreateTransaction}>
             <Plus className="h-4 w-4 mr-2" />
             Nova Transação
           </Button>
@@ -189,6 +231,11 @@ export default function Transactions() {
                                   Fonte: {transaction.source}
                                 </div>
                               )}
+                              {transaction.isVariable && (
+                                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 ml-1 text-xs">
+                                  Valor Variável
+                                </Badge>
+                              )}
                             </div>
                           </div>
                         </TableCell>
@@ -227,13 +274,22 @@ export default function Transactions() {
                               Pago
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200">
+                            <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 cursor-pointer" onClick={() => markAsPaid(transaction.id)}>
                               Pendente
                             </Badge>
                           )}
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="icon"
+                              className="h-8 w-8" 
+                              onClick={() => handleEditTransaction(transaction)}
+                              title="Editar"
+                            >
+                              <Pen className="h-4 w-4 text-blue-600" />
+                            </Button>
                             {!transaction.isPaid && (
                               <Button 
                                 variant="ghost" 
@@ -249,7 +305,7 @@ export default function Transactions() {
                               variant="ghost" 
                               size="icon"
                               className="h-8 w-8" 
-                              onClick={() => deleteTransaction(transaction.id)}
+                              onClick={() => handleDeleteTransaction(transaction.id)}
                               title="Excluir"
                             >
                               <Trash2 className="h-4 w-4 text-red-600" />
@@ -264,6 +320,31 @@ export default function Transactions() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Transaction Dialog */}
+        <TransactionDialog 
+          open={isDialogOpen} 
+          onOpenChange={setIsDialogOpen} 
+          transaction={selectedTransaction} 
+        />
+
+        {/* Delete Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir transação?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. A transação será permanentemente removida dos seus registros.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction variant="destructive" onClick={confirmDelete}>
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     </Shell>
   );

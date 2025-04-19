@@ -13,6 +13,8 @@ import Transactions from "./pages/Transactions";
 import Reports from "./pages/Reports";
 import Budgets from "./pages/Budgets";
 import Forecast from "./pages/Forecast";
+import Notifications from "./pages/Notifications";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -113,6 +115,22 @@ const App = () => (
                 element={
                   <ProtectedRoute>
                     <Forecast />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/notifications" 
+                element={
+                  <ProtectedRoute>
+                    <Notifications />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route 
+                path="/profile" 
+                element={
+                  <ProtectedRoute>
+                    <Profile />
                   </ProtectedRoute>
                 } 
               />
