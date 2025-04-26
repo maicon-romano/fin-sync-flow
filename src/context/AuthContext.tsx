@@ -1,12 +1,28 @@
-
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+} from "react";
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut,
+  onAuthStateChanged,
+  GoogleAuthProvider,
+  signInWithPopup,
+  User as FirebaseUser,
+} from "firebase/auth";
+import { doc, setDoc, getDoc } from "firebase/firestore";
+import { auth, db } from "@/lib/firebase";
 import { toast } from "@/components/ui/sonner";
 
 type User = {
   id: string;
   name: string;
   email: string;
-  plan: 'free' | 'premium' | 'business';
+  plan: "free" | "premium" | "business";
 };
 
 type AuthContextType = {
@@ -14,8 +30,9 @@ type AuthContextType = {
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   signup: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isPremium: () => boolean;
+  loginWithGoogle: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,36 +41,93 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // Check if user is logged in from localStorage
-    const storedUser = localStorage.getItem('finsync_user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  const loginWithGoogle = async () => {
+    setIsLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      const firebaseUser = result.user;
+
+      const userRef = doc(db, "users", firebaseUser.uid);
+      const docSnap = await getDoc(userRef);
+
+      let userData: User;
+
+      if (!docSnap.exists()) {
+        // Criação do novo usuário no Firestore
+        userData = {
+          id: firebaseUser.uid,
+          name: firebaseUser.displayName || firebaseUser.email!.split("@")[0],
+          email: firebaseUser.email!,
+          plan: "free",
+        };
+        await setDoc(userRef, userData);
+      } else {
+        // Usuário já existia, apenas resgata os dados
+        userData = docSnap.data() as User;
+      }
+
+      // 🔥 Aqui está o ponto chave: armazenar o usuário logado no contexto
+      setUser(userData);
+
+      toast.success("Login com Google realizado!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Erro ao logar com Google.");
+      throw error;
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        const docRef = doc(db, "users", firebaseUser.uid);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+          const userData = docSnap.data() as User;
+          setUser({
+            id: firebaseUser.uid,
+            name: userData.name,
+            email: userData.email,
+            plan: userData.plan || "free",
+          });
+        }
+      } else {
+        setUser(null);
+      }
+
+      setIsLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const login = async (email: string, password: string) => {
-    // Mock login for demonstration purposes
-    // In production, this should call an actual API
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For demo purposes, any email/password will work
-      const userData: User = {
-        id: '1',
-        name: email.split('@')[0],
-        email,
-        plan: 'free'
-      };
-      
-      setUser(userData);
-      localStorage.setItem('finsync_user', JSON.stringify(userData));
-      toast.success("Login realizado com sucesso!");
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const firebaseUser = result.user;
+
+      const docRef = doc(db, "users", firebaseUser.uid);
+      const docSnap = await getDoc(docRef);
+
+      if (docSnap.exists()) {
+        const userData = docSnap.data() as User;
+        setUser({
+          id: firebaseUser.uid,
+          name: userData.name,
+          email: userData.email,
+          plan: userData.plan || "free",
+        });
+        toast.success("Login realizado com sucesso!");
+      } else {
+        toast.error("Usuário não encontrado no banco de dados.");
+      }
     } catch (error) {
-      toast.error("Falha ao fazer login. Tente novamente.");
+      toast.error("Erro ao fazer login. Verifique os dados.");
       throw error;
     } finally {
       setIsLoading(false);
@@ -61,42 +135,56 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const signup = async (name: string, email: string, password: string) => {
-    // Mock signup for demonstration purposes
     setIsLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
+      const result = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const firebaseUser = result.user;
+
       const userData: User = {
-        id: '1',
+        id: firebaseUser.uid,
         name,
         email,
-        plan: 'free'
+        plan: "free",
       };
-      
+
+      await setDoc(doc(db, "users", firebaseUser.uid), userData);
+
       setUser(userData);
-      localStorage.setItem('finsync_user', JSON.stringify(userData));
       toast.success("Conta criada com sucesso!");
     } catch (error) {
-      toast.error("Falha ao criar conta. Tente novamente.");
+      toast.error("Erro ao criar conta.");
       throw error;
     } finally {
       setIsLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await signOut(auth);
     setUser(null);
-    localStorage.removeItem('finsync_user');
-    toast.info("Sessão encerrada");
+    toast.info("Sessão encerrada.");
   };
 
   const isPremium = () => {
-    return user?.plan === 'premium' || user?.plan === 'business';
+    return user?.plan === "premium" || user?.plan === "business";
   };
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, signup, logout, isPremium }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        isLoading,
+        login,
+        signup,
+        logout,
+        isPremium,
+        loginWithGoogle,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
@@ -105,7 +193,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };

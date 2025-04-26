@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -33,7 +32,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -43,12 +41,15 @@ import {
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
-import { Transaction, TransactionCategory, TransactionType, useTransactions, categoryLabels } from "@/context/TransactionContext";
+import {
+  Transaction,
+  useTransactions,
+  categoryLabels,
+} from "@/context/TransactionContext";
 
-// Schema for form validation
 const transactionFormSchema = z.object({
-  title: z.string().min(3, "O título deve ter pelo menos 3 caracteres"),
-  amount: z.coerce.number().min(0.01, "O valor deve ser maior que zero"),
+  title: z.string().min(3),
+  amount: z.coerce.number().min(0.01),
   type: z.enum(["income", "expense"]),
   category: z.string(),
   date: z.date(),
@@ -60,7 +61,7 @@ const transactionFormSchema = z.object({
   notes: z.string().optional(),
 });
 
-type TransactionFormValues = z.infer<typeof transactionFormSchema>;
+export type TransactionFormValues = z.infer<typeof transactionFormSchema>;
 
 interface TransactionDialogProps {
   open: boolean;
@@ -68,70 +69,72 @@ interface TransactionDialogProps {
   transaction?: Transaction;
 }
 
-export function TransactionDialog({ 
-  open, 
-  onOpenChange, 
-  transaction 
+export function TransactionDialog({
+  open,
+  onOpenChange,
+  transaction,
 }: TransactionDialogProps) {
-  const { addTransaction, updateTransaction, categoryLabels } = useTransactions();
+  const { addTransaction, updateTransaction } = useTransactions();
   const isEditing = !!transaction;
-
-  // Set default values for the form
-  const defaultValues: Partial<TransactionFormValues> = {
-    title: transaction?.title || "",
-    amount: transaction?.amount || 0,
-    type: transaction?.type || "expense",
-    category: transaction?.category || "",
-    date: transaction?.date ? new Date(transaction.date) : new Date(),
-    dueDate: transaction?.dueDate ? new Date(transaction.dueDate) : undefined,
-    isPaid: transaction?.isPaid || false,
-    isRecurring: transaction?.isRecurring || false,
-    isVariable: transaction?.isVariable || false,
-    source: transaction?.source || "",
-    notes: transaction?.notes || "",
-  };
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showDueDatePicker, setShowDueDatePicker] = useState(false);
 
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionFormSchema),
-    defaultValues,
+    defaultValues: {
+      title: "",
+      amount: 0,
+      type: "expense",
+      category: "",
+      date: new Date(),
+      dueDate: undefined,
+      isPaid: false,
+      isRecurring: false,
+      isVariable: false,
+      source: "",
+      notes: "",
+    },
   });
 
-  // Reset form when transaction changes or dialog opens/closes
   useEffect(() => {
-    if (open) {
-      form.reset(defaultValues);
+    if (open && transaction) {
+      form.reset({
+        ...transaction,
+        date: new Date(transaction.date),
+        dueDate: transaction.dueDate
+          ? new Date(transaction.dueDate)
+          : undefined,
+      });
+    } else if (open) {
+      form.reset();
     }
-  }, [open, transaction, form, defaultValues]);
+  }, [open, transaction]);
 
-  // Watch for type changes to filter categories
   const watchedType = form.watch("type");
-  const watchedIsRecurring = form.watch("isRecurring");
 
-  // Filter categories based on transaction type
   const filteredCategories = Object.entries(categoryLabels)
-    .filter(([key, _]) => {
-      if (watchedType === "income") {
-        return key.includes("income") || key === "salary" || key === "investment" || key === "bonus";
-      } else {
-        return !key.includes("income");
-      }
-    })
-    .map(([key, value]) => ({ value: key, label: value }));
+    .filter(([key]) =>
+      watchedType === "income"
+        ? key.includes("income")
+        : !key.includes("income")
+    )
+    .map(([key, label]) => ({ value: key, label }));
 
   function onSubmit(data: TransactionFormValues) {
-    // Format dates to ISO string
-    const formattedData = {
+    const payload: Omit<Transaction, "id"> = {
       ...data,
-      date: data.date.toISOString().split('T')[0],
-      dueDate: data.dueDate ? data.dueDate.toISOString().split('T')[0] : undefined,
+      date: data.date.toISOString().split("T")[0],
+      dueDate: data.dueDate
+        ? data.dueDate.toISOString().split("T")[0]
+        : undefined,
     };
 
     if (isEditing && transaction) {
-      updateTransaction(transaction.id, formattedData as Partial<Transaction>);
+      updateTransaction(transaction.id, payload);
     } else {
-      addTransaction(formattedData as Omit<Transaction, 'id'>);
+      addTransaction(payload);
     }
-    
+
     onOpenChange(false);
   }
 
@@ -139,37 +142,41 @@ export function TransactionDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-hidden">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Editar Transação" : "Nova Transação"}</DialogTitle>
+          <DialogTitle>
+            {isEditing ? "Editar Transação" : "Nova Transação"}
+          </DialogTitle>
           <DialogDescription>
-            {isEditing 
-              ? "Modifique os detalhes da transação existente" 
-              : "Preencha os detalhes da nova transação"}
+            Preencha os campos abaixo com os dados da sua receita ou despesa.
           </DialogDescription>
         </DialogHeader>
-        
+
         <ScrollArea className="max-h-[calc(90vh-180px)] pr-4">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Title */}
                 <FormField
-                  control={form.control}
                   name="title"
+                  control={form.control}
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
                       <FormLabel>Descrição</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Aluguel, Salário, Conta de Luz" {...field} />
+                        <Input
+                          {...field}
+                          placeholder="Ex: Aluguel, Salário, Conta de Luz"
+                        />
                       </FormControl>
+                      <FormDescription>
+                        Descreva o nome da transação.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Transaction Type */}
                 <FormField
-                  control={form.control}
                   name="type"
+                  control={form.control}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Tipo</FormLabel>
@@ -192,86 +199,98 @@ export function TransactionDialog({
                   )}
                 />
 
-                {/* Amount */}
                 <FormField
-                  control={form.control}
                   name="amount"
+                  control={form.control}
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Valor</FormLabel>
                       <FormControl>
                         <div className="relative">
-                          <span className="absolute left-3 top-2.5 text-muted-foreground">R$</span>
-                          <Input className="pl-8" {...field} type="number" step="0.01" />
+                          <span className="absolute left-3 top-2.5 text-muted-foreground">
+                            R$
+                          </span>
+                          <Input
+                            className="pl-8"
+                            type="number"
+                            step="0.01"
+                            {...field}
+                          />
                         </div>
+                      </FormControl>
+                      <FormDescription>
+                        Informe o valor da transação.
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  name="category"
+                  control={form.control}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Categoria</FormLabel>
+                      <FormControl>
+                        <Select
+                          value={field.value}
+                          onValueChange={field.onChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione:" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {filteredCategories.map((c) => (
+                              <SelectItem key={c.value} value={c.value}>
+                                {c.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Category */}
                 <FormField
-                  control={form.control}
-                  name="category"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Categoria</FormLabel>
-                      <Select
-                        onValueChange={field.onChange}
-                        value={field.value}
-                      >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Selecione uma categoria" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent className="z-[60]">
-                          {filteredCategories.map(category => (
-                            <SelectItem key={category.value} value={category.value}>
-                              {category.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Transaction Date */}
-                <FormField
-                  control={form.control}
                   name="date"
+                  control={form.control}
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Data da Transação</FormLabel>
-                      <Popover>
+                      <Popover
+                        open={showDatePicker}
+                        onOpenChange={setShowDatePicker}
+                      >
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
-                              variant={"outline"}
-                              className={cn(
-                                "pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                              )}
+                              variant="outline"
+                              className="pl-3 text-left font-normal"
                             >
-                              {field.value ? (
-                                format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                              ) : (
-                                <span>Selecione uma data</span>
-                              )}
+                              {field.value
+                                ? format(field.value, "dd/MM/yyyy", {
+                                    locale: ptBR,
+                                  })
+                                : "Selecione uma data"}
                               <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                             </Button>
                           </FormControl>
                         </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0 z-[100]" align="start">
+                        <PopoverContent
+                          align="start"
+                          className="w-auto p-0 z-[100]"
+                        >
                           <Calendar
                             mode="single"
                             selected={field.value}
-                            onSelect={field.onChange}
+                            onSelect={(val) => {
+                              field.onChange(val);
+                              setShowDatePicker(false);
+                            }}
                             initialFocus
-                            className="p-3 pointer-events-auto"
                           />
                         </PopoverContent>
                       </Popover>
@@ -280,40 +299,44 @@ export function TransactionDialog({
                   )}
                 />
 
-                {/* Due Date - Show only for expenses */}
                 {watchedType === "expense" && (
                   <FormField
-                    control={form.control}
                     name="dueDate"
+                    control={form.control}
                     render={({ field }) => (
                       <FormItem className="flex flex-col">
                         <FormLabel>Data de Vencimento</FormLabel>
-                        <Popover>
+                        <Popover
+                          open={showDueDatePicker}
+                          onOpenChange={setShowDueDatePicker}
+                        >
                           <PopoverTrigger asChild>
                             <FormControl>
                               <Button
-                                variant={"outline"}
-                                className={cn(
-                                  "pl-3 text-left font-normal",
-                                  !field.value && "text-muted-foreground"
-                                )}
+                                variant="outline"
+                                className="pl-3 text-left font-normal"
                               >
-                                {field.value ? (
-                                  format(field.value, "dd/MM/yyyy", { locale: ptBR })
-                                ) : (
-                                  <span>Selecione uma data</span>
-                                )}
+                                {field.value
+                                  ? format(field.value, "dd/MM/yyyy", {
+                                      locale: ptBR,
+                                    })
+                                  : "Selecione uma data"}
                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                               </Button>
                             </FormControl>
                           </PopoverTrigger>
-                          <PopoverContent className="w-auto p-0 z-[100]" align="start">
+                          <PopoverContent
+                            align="start"
+                            className="w-auto p-0 z-[100]"
+                          >
                             <Calendar
                               mode="single"
                               selected={field.value}
-                              onSelect={field.onChange}
+                              onSelect={(val) => {
+                                field.onChange(val);
+                                setShowDueDatePicker(false);
+                              }}
                               initialFocus
-                              className="p-3 pointer-events-auto"
                             />
                           </PopoverContent>
                         </Popover>
@@ -323,116 +346,92 @@ export function TransactionDialog({
                   />
                 )}
 
-                {/* Source / Origin - Full width */}
                 <FormField
-                  control={form.control}
                   name="source"
+                  control={form.control}
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
                       <FormLabel>Origem / Fonte</FormLabel>
                       <FormControl>
-                        <Input placeholder="Ex: Empresa XYZ, Cartão Nubank" {...field} />
+                        <Input
+                          {...field}
+                          placeholder="Ex: Cartão Nubank, Empresa XYZ"
+                        />
                       </FormControl>
                       <FormDescription>
-                        {watchedType === "income" 
-                          ? "De onde vem esta receita?" 
-                          : "Qual meio de pagamento ou origem desta despesa?"}
+                        Informe de onde vem essa receita ou qual o meio de
+                        pagamento da despesa.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Checkboxes row */}
-                <div className="md:col-span-2 flex flex-col sm:flex-row gap-4 pt-2">
-                  {/* Is Paid */}
-                  <FormField
-                    control={form.control}
-                    name="isPaid"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 bg-muted/30 p-3 rounded-md">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            className="mt-1"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-base">Pago/Recebido</FormLabel>
-                          <FormDescription>
-                            {watchedType === "income" 
-                              ? "Esta receita já foi recebida?" 
-                              : "Esta despesa já foi paga?"}
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Is Recurring */}
-                  <FormField
-                    control={form.control}
-                    name="isRecurring"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-3 space-y-0 bg-muted/30 p-3 rounded-md">
-                        <FormControl>
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                            className="mt-1"
-                          />
-                        </FormControl>
-                        <div className="space-y-1 leading-none">
-                          <FormLabel className="text-base">Recorrente</FormLabel>
-                          <FormDescription>
-                            Esta transação se repete mensalmente?
-                          </FormDescription>
-                        </div>
-                      </FormItem>
-                    )}
-                  />
-
-                  {/* Is Variable - Only for expenses */}
-                  {watchedType === "expense" && (
+                {[
+                  "isPaid",
+                  "isRecurring",
+                  watchedType === "expense" ? "isVariable" : null,
+                ]
+                  .filter(Boolean)
+                  .map((name) => (
                     <FormField
+                      key={name as string}
+                      name={name as keyof TransactionFormValues}
                       control={form.control}
-                      name="isVariable"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 bg-muted/30 p-3 rounded-md">
-                          <FormControl>
-                            <Checkbox
-                              checked={field.value}
-                              onCheckedChange={field.onChange}
-                              className="mt-1"
-                            />
-                          </FormControl>
-                          <div className="space-y-1 leading-none">
-                            <FormLabel className="text-base">Valor Variável</FormLabel>
-                            <FormDescription>
-                              O valor desta despesa varia mensalmente?
-                            </FormDescription>
-                          </div>
+                        <FormItem className="flex-1">
+                          <FormLabel className="capitalize">
+                            {name === "isPaid"
+                              ? "Despesa Paga"
+                              : name === "isRecurring"
+                              ? "Transação Recorrente"
+                              : "Valor Variável"}
+                          </FormLabel>
+                          <FormDescription>
+                            {name === "isPaid"
+                              ? "A despesa já foi quitada ou a receita recebida."
+                              : name === "isRecurring"
+                              ? "Essa transação se repete todos os meses."
+                              : "O valor dessa transação muda mensalmente."}
+                          </FormDescription>
+                          <Select
+                            onValueChange={(val) =>
+                              field.onChange(val === "true")
+                            }
+                            value={String(field.value)}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Selecione" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="true">Sim</SelectItem>
+                              <SelectItem value="false">Não</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
-                  )}
-                </div>
+                  ))}
 
-                {/* Notes */}
                 <FormField
-                  control={form.control}
                   name="notes"
+                  control={form.control}
                   render={({ field }) => (
                     <FormItem className="md:col-span-2">
                       <FormLabel>Observações</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Informações adicionais sobre esta transação..." 
-                          className="min-h-[80px]" 
-                          {...field} 
+                        <Textarea
+                          {...field}
+                          placeholder="Adicione qualquer detalhe relevante..."
+                          className="min-h-[80px]"
                         />
                       </FormControl>
+                      <FormDescription>
+                        Campo opcional para anotações ou descrições adicionais.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -440,13 +439,12 @@ export function TransactionDialog({
               </div>
 
               <DialogFooter className="pt-4">
-                <Button 
-                  type="button" 
-                  variant="outline" 
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  <X className="h-4 w-4 mr-2" />
-                  Cancelar
+                  <X className="h-4 w-4 mr-2" /> Cancelar
                 </Button>
                 <Button type="submit">
                   {isEditing ? (

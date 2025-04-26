@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -22,7 +21,7 @@ const queryClient = new QueryClient();
 // Protected route component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -30,18 +29,18 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     );
   }
-  
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
 // Public only route (redirects to dashboard if logged in)
 const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
-  
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -49,11 +48,11 @@ const PublicOnlyRoute = ({ children }: { children: React.ReactNode }) => {
       </div>
     );
   }
-  
+
   if (user) {
     return <Navigate to="/" replace />;
   }
-  
+
   return <>{children}</>;
 };
 
@@ -68,73 +67,73 @@ const App = () => (
           <BrowserRouter>
             <Routes>
               {/* Public routes */}
-              <Route 
-                path="/login" 
+              <Route
+                path="/login"
                 element={
                   <PublicOnlyRoute>
                     <Login />
                   </PublicOnlyRoute>
-                } 
+                }
               />
-              
+
               {/* Protected routes */}
-              <Route 
-                path="/" 
+              <Route
+                path="/"
                 element={
                   <ProtectedRoute>
                     <Dashboard />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/transactions" 
+              <Route
+                path="/transactions"
                 element={
                   <ProtectedRoute>
                     <Transactions />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/budgets" 
+              <Route
+                path="/budgets"
                 element={
                   <ProtectedRoute>
                     <Budgets />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/reports" 
+              <Route
+                path="/reports"
                 element={
                   <ProtectedRoute>
                     <Reports />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/forecast" 
+              <Route
+                path="/forecast"
                 element={
                   <ProtectedRoute>
                     <Forecast />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/notifications" 
+              <Route
+                path="/notifications"
                 element={
                   <ProtectedRoute>
                     <Notifications />
                   </ProtectedRoute>
-                } 
+                }
               />
-              <Route 
-                path="/profile" 
+              <Route
+                path="/profile"
                 element={
                   <ProtectedRoute>
                     <Profile />
                   </ProtectedRoute>
-                } 
+                }
               />
-              
+
               {/* 404 Fallback */}
               <Route path="*" element={<NotFound />} />
             </Routes>
